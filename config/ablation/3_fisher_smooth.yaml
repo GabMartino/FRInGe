@@ -1,0 +1,63 @@
+
+name: 3_fisher_smooth
+
+
+fisher: true
+binary: false
+use_sobolev_preconditioner: true
+smoothing: true
+
+resnet18:
+  eta_max: 13.56315
+  delta_euc: 0.61337
+  kl_target: 0.00030339
+  lambda_ratio: 4.7707e-11
+  gamma_step: 0.0099739
+  gamma_prior: 0.00097495
+  cg_max_iters: 20
+
+resnet50:
+  eta_max: 1.179
+  delta_euc: 5.00773
+  kl_target: 0.0027031
+  lambda_ratio: 0.00025802
+  gamma_step: 0.009943
+  gamma_prior: 0.00094855
+  cg_max_iters: 20
+
+resnet101:
+  eta_max: 1.53481
+  delta_euc: 3.84629
+  kl_target: 0.0003693
+  lambda_ratio: 8.0172e-8
+  gamma_step: 0.0099812
+  gamma_prior: 0.00060812
+  cg_max_iters: 20
+
+resnet152:
+  eta_max: 1.74774
+  delta_euc: 3.31598
+  kl_target: 0.00041281
+  lambda_ratio: 0.000075483
+  gamma_step: 0.0060553
+  gamma_prior: 0.00091604
+  cg_max_iters: 20
+
+inception_v3:
+  eta_max: 16.91726
+  delta_euc: 24.18139
+  kl_target: 0.00053427
+  lambda_ratio: 0.0000071733
+  gamma_step: 0.009727
+  gamma_prior: 0.00034298
+  cg_max_iters: 20
+
+
+vgg19:
+  eta_max: 2.75362
+  delta_euc: 0.6969
+  kl_target: 0.00030449
+  lambda_ratio: 3.0302e-11
+  gamma_step: 0.005132
+  gamma_prior: 0.00096205
+  cg_max_iters: 20

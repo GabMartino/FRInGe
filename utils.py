@@ -1,44 +1,38 @@
 import json
 import os
-from typing import Iterable
+from typing import Iterable, Optional, List
 
 import numpy as np
+import torch
 from PIL import Image, ImageOps
 from matplotlib import pyplot as plt
 from torchvision.models import resnet18, resnet50, vgg19, inception_v3, VGG19_Weights, Inception_V3_Weights, \
-    ResNet50_Weights, ResNet18_Weights, ResNet152_Weights, resnet152, ResNet101_Weights, resnet101
+    ResNet50_Weights, ResNet18_Weights, ResNet152_Weights, resnet152, ResNet101_Weights, resnet101, vit_b_16, \
+    ViT_B_16_Weights
 from torchvision.transforms import transforms, InterpolationMode
 
+def load_model(model_name: str, device: str | None = None):
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    registry = {
+        "resnet18": (resnet18, ResNet18_Weights.IMAGENET1K_V1),
+        "resnet50": (resnet50, ResNet50_Weights.IMAGENET1K_V1),
+        "resnet101": (resnet101, ResNet101_Weights.IMAGENET1K_V1),
+        "resnet152": (resnet152, ResNet152_Weights.IMAGENET1K_V1),
+        "vgg19": (vgg19, VGG19_Weights.IMAGENET1K_V1),
+        "inception_v3": (inception_v3, Inception_V3_Weights.IMAGENET1K_V1),
+        "vit_b_16": (vit_b_16, ViT_B_16_Weights.IMAGENET1K_V1),
+    }
 
-def load_model(model_name, device="cuda"):
-    model, weights = None, None
-    if model_name == 'resnet18':
-        weights = ResNet18_Weights.IMAGENET1K_V1
-        model = resnet18(weights=weights)
-    elif model_name == 'resnet50':
-        weights = ResNet50_Weights.IMAGENET1K_V1
-        model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+    if model_name not in registry:
+        valid = ", ".join(registry.keys())
+        raise ValueError(f"Invalid model name '{model_name}'. Valid options: {valid}")
 
-    elif model_name == 'vgg19':
-        weights = VGG19_Weights.IMAGENET1K_V1
-        model = vgg19(weights=VGG19_Weights.IMAGENET1K_V1)
-    elif model_name == "resnet152":
-        weights = ResNet152_Weights.IMAGENET1K_V1
-        model = resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
+    model_fn, weights = registry[model_name]
+    model = model_fn(weights=weights)
 
-    elif model_name == "resnet101":
-        weights = ResNet101_Weights.IMAGENET1K_V1
-        model = resnet101(weights=ResNet101_Weights.IMAGENET1K_V1)
-
-    elif model_name == 'inception_v3':
-        weights = Inception_V3_Weights.IMAGENET1K_V1
-        model = inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
-    else:
-        raise ValueError('Invalid model name')
-    #model = torch.compile(model)
     return model.to(device).eval(), weights.transforms()
-
 
 
 def normalize_image(image):
@@ -144,3 +138,104 @@ def save_attribution(cfg, image_path, attributions, image):
     plt.axis('off')
     plt.savefig(path)
 
+import numpy as np
+import torch
+from typing import List, Union
+
+
+def denormalize(
+    x: Union[torch.Tensor, np.ndarray],
+    mean: List[float] = [0.485, 0.456, 0.406],
+    std: List[float] = [0.229, 0.224, 0.225],
+) -> np.ndarray:
+    """
+    Reverse ImageNet normalization.
+
+    Accepts:
+      [3, H, W]
+      [1, 3, H, W]
+      [H, W, 3]
+
+    Returns:
+      [H, W, 3] numpy array in [0, 1]
+    """
+    if torch.is_tensor(x):
+        x = x.detach().cpu().numpy()
+    else:
+        x = np.asarray(x)
+
+    if x.ndim == 4:
+        if x.shape[0] != 1:
+            raise ValueError(f"Expected batch size 1, got shape {x.shape}")
+        x = x[0]
+
+    if x.ndim != 3:
+        raise ValueError(f"Expected 3D image tensor, got shape {x.shape}")
+
+    # CHW -> HWC
+    if x.shape[0] == 3 and x.shape[-1] != 3:
+        x = np.transpose(x, (1, 2, 0))
+    elif x.shape[-1] != 3:
+        raise ValueError(f"Expected 3 channels, got shape {x.shape}")
+
+    mean = np.asarray(mean, dtype=x.dtype)
+    std = np.asarray(std, dtype=x.dtype)
+
+    x = x * std + mean
+    return np.clip(x, 0, 1)
+
+
+def visualize_attributions(images: torch.Tensor,
+                           attributions: torch.Tensor,
+                           cmap: str = 'jet',  # 'jet' or 'turbo' often provide higher contrast than 'inferno'
+                           alpha: float = 0.5,
+                           percentile: float = 99,
+                           save_path: Optional[str] = None):
+    """
+    Enhanced visualization using percentile clipping and Gaussian smoothing.
+    """
+    B = images.shape[0]
+
+    # 1. Aggregation: Summing across channels can cancel out signal if not careful.
+    # Using max(abs) is often more robust for 'visibility' than sum(abs).
+    attr_map = attributions.detach().abs().max(dim=1)[0]
+
+    # 2. Setup Plot
+    fig, axes = plt.subplots(nrows=B, ncols=3, figsize=(15, 5 * B))
+    if B == 1: axes = axes[None, :]
+
+    for i in range(B):
+        # A. Process Heatmap for Visibility
+        attr_np = attr_map[i].cpu().numpy()
+
+        # Robust Scaling: Use percentiles to ignore outlier spikes (hot pixels)
+        v_max = np.percentile(attr_np, percentile)
+        v_min = attr_np.min()
+        attr_np = np.clip((attr_np - v_min) / (v_max - v_min + 1e-8), 0, 1)
+
+
+
+        # B. Original Image
+        img_viz = denormalize(images[i])
+        axes[i, 0].imshow(img_viz)
+        axes[i, 0].set_title("Input")
+        axes[i, 0].axis('off')
+
+        # C. High-Contrast Heatmap
+        # We use a thresholded mask to see the "core" of the attribution
+        axes[i, 1].imshow(attr_np, cmap=cmap)
+        axes[i, 1].set_title(f"Processed Heatmap ({percentile}th pct)")
+        axes[i, 1].axis('off')
+
+        # D. Blended Overlay
+        axes[i, 2].imshow(img_viz)
+        # Applying a threshold mask to the alpha channel makes the attribution "pop"
+        # only where it is actually relevant
+        mask = (attr_np > 0.2).astype(float) * alpha
+        axes[i, 2].imshow(attr_np, cmap=cmap, alpha=mask)
+        axes[i, 2].set_title("Focused Overlay")
+        axes[i, 2].axis('off')
+
+    plt.tight_layout()
+    if save_path: plt.savefig(save_path)
+    plt.show()
