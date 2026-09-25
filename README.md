@@ -14,9 +14,10 @@ FRInGe prescribes a geodesic from the model prediction to a maximum-entropy refe
 waypoints through the classifier's pullback geometry.
 </em></p>
 
-> **Research-code status.** This repository currently provides the full categorical FRInGe reference
-> implementation, diagnostics, evaluation metrics, and an executable notebook. The API and default
-> parameters may change while the research release is being finalized.
+> **Research-code status.** This repository provides the benchmark-facing categorical FRInGe
+> implementation and its FRInGe-B target-vs-rest specialization, together with evaluation metrics and
+> the architecture-specific hyperparameters used in the experiments. The API may still change while
+> the research release is being finalized.
 
 ## Why FRInGe?
 
@@ -32,8 +33,22 @@ may cross saturated or poorly conditioned regions. FRInGe changes the constructi
    step cap.
 5. **Path attribution:** integrate the target-score gradient along the realized input trajectory.
 
-The inner linear system is solved with preconditioned conjugate gradients (PCG), without forming the full
-input-space Fisher matrix.
+Full categorical FRInGe solves the inner linear system with preconditioned conjugate gradients (PCG),
+without forming the input-space Fisher matrix. FRInGe-B instead exploits the rank-one target-vs-rest
+pullback: its unsmoothed direction is closed form, while its smoothed variant requires only structured
+regularizer solves.
+
+## Which implementation is canonical?
+
+The benchmarking entry point is
+[`FisherRaoIG/FisherRaoIntegratedGradients.py`](FisherRaoIG/FisherRaoIntegratedGradients.py). Its
+`binary=False` branch implements full categorical FRInGe. Setting `binary=True` delegates to
+[`FisherRaoIG/BinaryFisherRaoIntegratedGradients.py`](FisherRaoIG/BinaryFisherRaoIntegratedGradients.py),
+which implements FRInGe-B. The binary module is therefore a required backend, not a replacement for the
+benchmark-facing class.
+
+The older `BiharmonicFisherRaoIntegratedGradients.py` module is retained only for its high-instrumentation
+visualization workflow; it is not the implementation used to produce the benchmark results.
 
 ## What the trajectory looks like
 
@@ -72,19 +87,22 @@ python -m pip install -r requirements.txt
 
 Torchvision downloads pretrained ImageNet weights the first time a model is loaded.
 
+Verify the categorical and binary implementations with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Quick start
 
-The following example explains the top-1 prediction of a pretrained ResNet-18. These are demonstration
-parameters, not universal defaults; stable settings depend on the architecture and input resolution.
+The following example explains the top-1 prediction of a pretrained ResNet-18 using the categorical
+implementation and its benchmarked ResNet-18 hyperparameters.
 
 ```python
 import torch
 
-from FisherRaoIG.BiharmonicFisherRaoIntegratedGradients import (
-    FisherRaoIntegratedGradients,
-    LogConfig,
-)
-from utils import denormalize_image, load_image, load_model
+from FisherRaoIG.FisherRaoIntegratedGradients import FisherRaoIntegratedGradients
+from utils import load_image, load_model
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -103,51 +121,45 @@ explainer = FisherRaoIntegratedGradients(
     model=model,
     model_forward=target_score,
     target_idx=target,
-    use_exact_jvp=True,
+    cg_max_iters=20,
 )
 
-attributions, diagnostics = explainer.attribute(
-    x,
-    max_correction_steps=1,
-    cg_max_iter=20,
-    kl_target=1e-3,
-    eta_base=10.0,
-    delta_euc=5.0,
-    gamma=1e-2,
-    alpha_start=1e-3,
-    alpha_end=1e-3,
-    diag_floor=1e-2,
-    clamp_min_diag=1e-3,
-    clamp_max_diag=100.0,
-    log_cfg=LogConfig(enabled=True, store_viz=False),
-    denormalize_image=denormalize_image,
+attributions, completeness_delta = explainer.attribute(
+    x=x,
+    kl_target=3.0339e-4,
+    fisher=True,
+    binary=False,
+    delta_euc=0.61337,
+    eta_max=13.56315,
+    use_sobolev_preconditioner=True,
+    lambda_ratio=4.7707e-11,
+    smoothing=True,
+    gamma_step=0.0099739,
+    gamma_prior=0.00097495,
 )
 
 print(attributions.shape)
-print(sorted(diagnostics))
+print("Mean completeness residual:", completeness_delta)
 ```
 
-For an end-to-end example with visualizations and metrics, run
-[`FRInGe_demo.ipynb`](FRInGe_demo.ipynb). Jupyter is optional and can be installed with:
+The complete categorical and binary parameter sets for all six architectures are recorded in
+[`config/ablation/3_fisher_smooth.yaml`](config/ablation/3_fisher_smooth.yaml) and
+[`config/ablation/fringe2_binary.yaml`](config/ablation/fringe2_binary.yaml), respectively. These are
+experiment-specific settings rather than universal defaults.
 
-```bash
-python -m pip install jupyterlab
-jupyter lab FRInGe_demo.ipynb
-```
+## Outputs and diagnostics
 
-## Diagnostics
+The benchmark-facing categorical call returns the attribution tensor and its mean absolute completeness
+residual. The FRInGe-B backend additionally records per-example diagnostics including:
 
-With logging enabled, `attribute` returns a dictionary containing quantities such as:
+- target probability, target log-odds, and requested waypoints;
+- Fisher–Rao and Euclidean step norms;
+- active trust-region constraints;
+- regularizer-inverse iteration counts;
+- completeness and endpoint errors, including the full categorical KL to uniform.
 
-- predictive entropy and waypoint loss;
-- Euclidean, Fisher–Rao, and regularized step lengths;
-- relative PCG residuals and iteration counts;
-- damping-versus-Fisher energy contributions;
-- quadrature completeness residuals;
-- optional intermediate inputs and attribution increments.
-
-These diagnostics are intended to make solver failure, poor waypoint tracking, and trust-region clipping
-observable rather than silent.
+When FRInGe-B is selected through the canonical wrapper, the full dictionary is available as
+`explainer.last_binary_stats` after attribution.
 
 ## Evaluation metrics
 
@@ -167,12 +179,14 @@ evaluates the induced feature ranking.
 
 ```text
 FisherRaoIG/
-  BiharmonicFisherRaoIntegratedGradients.py  # FRInGe solver and logging
-  plot_intermediates.py                      # intermediate-path visualizations
-  plot_utils.py                              # geometry and attribution plots
+  FisherRaoIntegratedGradients.py            # canonical benchmark-facing API
+  BinaryFisherRaoIntegratedGradients.py      # FRInGe-B backend
+  FR_utils.py                                # waypoints, Fisher products, and PCG
+  BiharmonicFisherRaoIntegratedGradients.py  # legacy diagnostic prototype
+config/ablation/                             # reported architecture settings
 metrics/                                     # attribution evaluation metrics
 examples/                                    # example ImageNet images
-FRInGe_demo.ipynb                            # end-to-end demonstration
+tests/                                       # geometry and integration tests
 utils.py                                     # model and image utilities
 ```
 
@@ -181,12 +195,14 @@ Adversarial IG used during development.
 
 ## Reproducibility notes
 
-- `FisherRaoIntegratedGradients` resets its local random generator from the configured seed.
-- The returned diagnostic dictionary can be serialized for post-hoc convergence analysis.
+- The released categorical class is the class imported by `FisherRaoIG_benchmarking.py` in the research
+  workspace; FRInGe-B is its required binary backend.
+- The benchmark artifacts record PyTorch 2.8.0, torchvision 0.23.0, and CUDA 12.8.
 - Hyperparameters should be reported together with the model, preprocessing pipeline, target definition,
   and perturbation protocol.
-- The current repository is a reference implementation and demo; the complete paper-specific benchmark
-  orchestration and architecture-specific configurations are being prepared for release.
+- The unit tests verify waypoint indexing, binary endpoint normalization, the closed-form rank-one solve,
+  finite attributions, and completeness on a deterministic toy classifier.
+- The complete paper-specific distributed benchmark orchestration is not yet part of this repository.
 
 ## Paper and citation
 
