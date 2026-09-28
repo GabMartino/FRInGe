@@ -17,10 +17,9 @@ the classifier's pullback geometry.
 </em></p>
 
 > **Research-code status.** This release contains the exact benchmark-facing
-> FRInGe code, competitor implementations, configurations, shared metrics, and
-> compact aggregate tables used in the paper workspace. The competitor files
-> are the implementations used in our experiments; unless explicitly stated,
-> they are not claimed to be the original authors' official repositories.
+> FRInGe code, competitor implementations, configurations, and shared metrics
+> used in the paper workspace. Unless explicitly stated, the competitor files
+> are not claimed to be the original authors' official repositories.
 
 ## Why FRInGe?
 
@@ -97,17 +96,12 @@ calibration-oriented MAS metrics; perturbation AUC results are more mixed.
 
 ```text
 methods/       FRInGe and one package per competitor
-benchmarks/    Cross-method protocols, including equal-budget evaluation
 evaluation/    Shared attribution metrics
 common/        Shared model and image utilities
 configs/       Exact method and ablation configurations
-analyses/      Scripts used to aggregate results and generate paper figures
-results/       Compact aggregate paper tables (raw tensors are not committed)
 assets/        Selected paper figures for documentation
 examples/      Small example images
-tests/         Numerical and protocol regression tests
 data/          Local dataset mount point; ImageNet is not distributed
-legacy/        Pre-reorganization visualization prototype, not benchmark code
 ```
 
 ## Installation
@@ -129,10 +123,11 @@ Torchvision downloads pretrained ImageNet weights on first use. MIG separately
 downloads `stabilityai/sd-vae-ft-mse` through Diffusers. GeoIG uses vendored
 source but still requires the dependencies declared in `requirements.txt`.
 
-Run the regression suite with:
+Check that an entry point and its Hydra configuration resolve without starting
+an experiment with:
 
 ```bash
-python -m unittest discover -s tests -v
+python -m methods.FisherRaoIG.FisherRaoIG_benchmarking --cfg job --resolve
 ```
 
 ## Quick start
@@ -192,7 +187,7 @@ and
 [`configs/ablation/fringe2_binary.yaml`](configs/ablation/fringe2_binary.yaml).
 These are experiment-specific settings, not universal defaults.
 
-## Reproducing benchmarks
+## Running experiments
 
 Place evaluation images under `data/ImageNet/` or override the corresponding
 Hydra path. Run all commands from the repository root. For example:
@@ -205,20 +200,23 @@ python -m methods.IG.IG_benchmarking
 python -m methods.ExpectedGradients.ExpectedGradients_benchmarking
 ```
 
-Every method writes to its own directory under `results/methods/`. Those raw
-outputs are intentionally ignored by Git. Shared metrics live under
-`evaluation/metrics/`. Computationally matched claims should use the explicit
-protocol in [`benchmarks/equal_budget/`](benchmarks/equal_budget/) rather than
-comparing unmatched default hyperparameters.
+The remaining competitors follow the same convention:
 
-The compact per-architecture tables in [`results/summaries/`](results/summaries/)
-contain means and 95% percentile bootstrap intervals for 1,001 images. They were
-generated with 2,000 bootstrap resamples and seed 42 by the released analysis
-code. These CSVs cover the eight-method main benchmark; BlurIG, Expected
-Gradients, and MIG are released here as appendix implementations/configs, not as
-additional rows retrofitted into those tables. Raw attribution tensors are too
-large for this repository and are not required to inspect the reported
-aggregates.
+```bash
+python -m methods.SmoothGrad.SmoothGrad_benchmarking
+python -m methods.GuidedIG.GuidedIG_benchmarking
+python -m methods.IG2.IG2_benchmarking
+python -m methods.AdversarialIG.AdversarialIG_benchmarking
+python -m methods.GGIG.GGIG_benchmarking
+python -m methods.GIG.GIG_benchmarking
+python -m methods.BlurIG.BlurIG_benchmarking
+python -m methods.MIG.MIG_benchmarking
+```
+
+Each runner reads its corresponding YAML file in `configs/`, uses the same
+model/image utilities and evaluation package, and creates its configured output
+directory under `results/methods/`. Generated results are ignored by Git and are
+not part of this source release.
 
 ## Reproducibility boundaries
 
@@ -232,8 +230,8 @@ aggregates.
 - Expected Gradients requires a genuinely disjoint reference pool for a final
   scientific run. Its local fallback reuses the evaluation directory and emits
   a warning; it is a smoke-test convenience, not a valid publication protocol.
-- Runtime comparisons are hardware- and batching-dependent. The equal-budget
-  runner records GPU identity and rejects invalid cross-device aggregation.
+- Runtime comparisons are hardware- and batching-dependent. Running the default
+  configurations does not by itself constitute a controlled speed comparison.
 - The exact Diffusers version used for the original MIG run was not captured in
   the archived environment metadata, so that dependency is intentionally not
   presented as fully pinned.

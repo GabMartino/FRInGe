@@ -8,7 +8,7 @@ the cited method description; it does not mean it is an official author release.
 | Package | Method | Benchmark entry point | Provenance and qualification |
 |---|---|---|---|
 | `FisherRaoIG/` | FRInGe / FRInGe-B | `FisherRaoIG_benchmarking.py` | Project implementation. The canonical categorical class dispatches to the binary backend when `binary=true`. |
-| `IG/` | Integrated Gradients | `IG_benchmarking.py` | Captum `IntegratedGradients` wrapper. `IntegratedGradients.py` is diagnostic code, not the paper runner. |
+| `IG/` | Integrated Gradients | `IG_benchmarking.py` | Captum `IntegratedGradients` wrapper used in the paper benchmark. |
 | `SmoothGrad/` | SmoothGrad | `SmoothGrad_benchmarking.py` | Project benchmark implementation. |
 | `GuidedIG/` | Guided Integrated Gradients | `GuidedIG_benchmarking.py` | Project benchmark implementation of the adaptive-path method. |
 | `IG2/` | IG² | `IG2_benchmarking.py` | Project benchmark implementation using an iterative representation-guided path. |
@@ -21,11 +21,15 @@ the cited method description; it does not mean it is an official author release.
 
 All runners share `common.utils` for preprocessing and
 `evaluation.metrics.MetricsWrapper` for evaluation. This common interface does
-not make default computational budgets equivalent. Use
-`benchmarks/equal_budget/` when making speed or quality-at-fixed-cost claims.
+not make their default computational budgets equivalent; controlled runtime
+claims require matched budgets and common hardware beyond what is encoded in
+these per-method runners.
 
 Run modules from the repository root, for example:
 
 ```bash
 python -m methods.SmoothGrad.SmoothGrad_benchmarking
 ```
+
+The associated dataset paths, model grids, hyperparameters, metric settings,
+and output roots are in the correspondingly named files under `configs/`.

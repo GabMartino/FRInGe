@@ -25,11 +25,8 @@ data/*
 .cache/
 .hf_cache/
 
-# Raw/generated experiment output; compact released summaries remain tracked
-results/*
-!results/README.md
-!results/summaries/
-!results/summaries/**
+# Generated experiment output
+results/
 outputs/
 artifacts/
 wandb/
