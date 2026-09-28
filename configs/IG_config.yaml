@@ -1,0 +1,57 @@
+# IG_config.yaml
+# Benchmark config for Vanilla Integrated Gradients + corrected metrics
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet101", "resnet152", "inception_v3", "vgg19"]
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/IG/"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+batch_size: 32       # Keep small for IG, it is memory hungry
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING (Crucial for parity)
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"  # "float16" or "float32"
+
+# -----------------------------
+# INTEGRATED GRADIENTS SPECIFIC
+# -----------------------------
+n_steps: 300                 # 50 is standard. 300 is very slow/expensive.
+ig_method: "gausslegendre"  # "gausslegendre" or "riemann_trapezoid"
+internal_batch_size: 64      # Controls VRAM usage during the integral step
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+# MUST be a list to match SmoothGrad output structure
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+# MUST be a list to match SmoothGrad output structure
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32   # Renamed from 'mas_infer_bs' to match script
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

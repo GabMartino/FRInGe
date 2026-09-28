@@ -1,63 +1,85 @@
 # FRInGe: Distribution-Space Integrated Gradients with Fisher–Rao Geometry
 
-**FRInGe** is a gradient-based attribution method that defines both its reference and its interpolation
-schedule in the model's predictive distribution space. It replaces a hand-designed input baseline with a
-maximum-entropy predictive reference, follows a Fisher–Rao geodesic on the probability simplex, and
-realizes that path in input space through a regularized pullback Fisher metric.
+**FRInGe** is a gradient-based attribution method whose reference and
+interpolation schedule are defined in the model's predictive distribution
+space. It replaces a hand-designed input baseline with a maximum-entropy
+predictive reference, follows a Fisher–Rao geodesic on the probability simplex,
+and realizes that path in input space through a regularized pullback Fisher
+metric.
 
 <p align="center">
   <img src="assets/predictive_geometry.png" width="100%" alt="FRInGe predictive-space geodesic and its input-space realization">
 </p>
 
 <p align="center"><em>
-FRInGe prescribes a geodesic from the model prediction to a maximum-entropy reference and tracks its
-waypoints through the classifier's pullback geometry.
+FRInGe prescribes a predictive-space geodesic and tracks its waypoints through
+the classifier's pullback geometry.
 </em></p>
 
-> **Research-code status.** This repository provides the benchmark-facing categorical FRInGe
-> implementation and its FRInGe-B target-vs-rest specialization, together with evaluation metrics and
-> the architecture-specific hyperparameters used in the experiments. The API may still change while
-> the research release is being finalized.
+> **Research-code status.** This release contains the exact benchmark-facing
+> FRInGe code, competitor implementations, configurations, and shared metrics
+> used in the paper workspace. Unless explicitly stated, the competitor files
+> are not claimed to be the original authors' official repositories.
 
 ## Why FRInGe?
 
-Standard Integrated Gradients requires an input-space baseline and usually follows a Euclidean straight
-line. Both choices can be problematic: the baseline may not represent missing information, while the path
-may cross saturated or poorly conditioned regions. FRInGe changes the construction in five steps:
+Standard Integrated Gradients requires an input-space baseline and usually
+follows a Euclidean straight line. FRInGe changes this construction in five
+steps:
 
-1. **Predictive reference:** use the uniform categorical distribution as a maximum-entropy endpoint.
-2. **Intrinsic schedule:** connect the prediction to that endpoint with a Fisher–Rao geodesic.
-3. **Pullback realization:** map each predictive waypoint back to an input update through the model's
-   pullback Fisher metric.
-4. **Stable updates:** combine damping, spatial regularization, a KL/Fisher trust region, and a Euclidean
-   step cap.
-5. **Path attribution:** integrate the target-score gradient along the realized input trajectory.
+1. use the uniform categorical distribution as a maximum-entropy predictive
+   endpoint;
+2. connect the prediction to that endpoint with a Fisher–Rao geodesic;
+3. map each predictive waypoint to an input update through the pullback Fisher
+   metric;
+4. stabilize the update with damping, spatial regularization, a Fisher/KL trust
+   region, and a Euclidean step cap; and
+5. integrate the target-score gradient along the realized input trajectory.
 
-Full categorical FRInGe solves the inner linear system with preconditioned conjugate gradients (PCG),
-without forming the input-space Fisher matrix. FRInGe-B instead exploits the rank-one target-vs-rest
-pullback: its unsmoothed direction is closed form, while its smoothed variant requires only structured
-regularizer solves.
+Full categorical FRInGe solves the inner linear system with preconditioned
+conjugate gradients without forming the input-space Fisher matrix. FRInGe-B
+collapses the predictive distribution to target versus rest and exploits the
+resulting rank-one pullback. Its unsmoothed natural-gradient direction is
+closed form; the spatially regularized version uses structured inverse solves.
 
-## Which implementation is canonical?
+## Canonical implementation
 
-The benchmarking entry point is
-[`FisherRaoIG/FisherRaoIntegratedGradients.py`](FisherRaoIG/FisherRaoIntegratedGradients.py). Its
-`binary=False` branch implements full categorical FRInGe. Setting `binary=True` delegates to
-[`FisherRaoIG/BinaryFisherRaoIntegratedGradients.py`](FisherRaoIG/BinaryFisherRaoIntegratedGradients.py),
-which implements FRInGe-B. The binary module is therefore a required backend, not a replacement for the
-benchmark-facing class.
-
-The older `BiharmonicFisherRaoIntegratedGradients.py` module is retained only for its high-instrumentation
-visualization workflow; it is not the implementation used to produce the benchmark results.
-
-## What the trajectory looks like
+The paper benchmark imports
+[`methods/FisherRaoIG/FisherRaoIntegratedGradients.py`](methods/FisherRaoIG/FisherRaoIntegratedGradients.py).
+Its `binary=False` branch is categorical FRInGe. Setting `binary=True`
+delegates to
+[`methods/FisherRaoIG/BinaryFisherRaoIntegratedGradients.py`](methods/FisherRaoIG/BinaryFisherRaoIntegratedGradients.py),
+which implements FRInGe-B. The binary file is therefore a required backend of
+the canonical class, not an alternative release.
 
 <p align="center">
   <img src="assets/trajectory_overview.png" width="100%" alt="FRInGe entropy, intermediate inputs, and accumulated attributions along the trajectory">
 </p>
 
-The predictive entropy increases toward the maximum-entropy endpoint while evidence for the target class
-is progressively attenuated. The bottom row shows when attribution is accumulated along this trajectory.
+## Paper benchmark suite
+
+The `methods/` directory contains one package per independently evaluated
+method:
+
+| Method | Package | Paper placement | Implementation status |
+|---|---|---|---|
+| FRInGe / FRInGe-B | `methods/FisherRaoIG/` | Main | Project implementation |
+| Integrated Gradients | `methods/IG/` | Main | Captum wrapper used in the benchmark |
+| SmoothGrad | `methods/SmoothGrad/` | Main | Project benchmark implementation |
+| Guided IG | `methods/GuidedIG/` | Main | Project benchmark implementation |
+| IG² | `methods/IG2/` | Main | Project benchmark implementation |
+| Adversarial Gradient Integration | `methods/AdversarialIG/` | Main | Project benchmark implementation |
+| GGIG | `methods/GGIG/` | Main | Project benchmark implementation |
+| GeoIG | `methods/GIG/` | Main | Adapter around vendored upstream source |
+| BlurIG | `methods/BlurIG/` | Appendix | Project benchmark implementation |
+| Expected Gradients | `methods/ExpectedGradients/` | Appendix | Captum-based implementation with an empirical reference pool |
+| Manifold Integrated Gradients | `methods/MIG/` | Appendix | Project port using a pretrained image autoencoder |
+
+The provenance and important methodological qualifications are recorded in
+[`methods/README.md`](methods/README.md). In particular, the MIG port uses a
+pretrained `AutoencoderKL` rather than retraining the original paper's
+dataset-specific VAE; that difference must be retained when interpreting the
+comparison.
 
 ## Qualitative comparison
 
@@ -65,44 +87,61 @@ is progressively attenuated. The bottom row shows when attribution is accumulate
   <img src="assets/qualitative_comparison.png" width="100%" alt="Qualitative comparison of FRInGe, Integrated Gradients, SmoothGrad, GGIG, and GeoIG">
 </p>
 
-The figure includes a strong case, a typical case, and a representative failure case rather than showing
-only favorable examples. `MI` and `MD` denote image-level MAS-Insertion and MAS-Deletion, respectively.
-Across the manuscript's six ImageNet architectures, FRInGe's clearest and most consistent advantage is on
+The figure contains a strong case, a typical case, and a representative failure
+case. `MI` and `MD` denote image-level MAS-Insertion and MAS-Deletion. Across the
+six ImageNet architectures in the paper, FRInGe's clearest advantage is on the
 calibration-oriented MAS metrics; perturbation AUC results are more mixed.
+
+## Repository layout
+
+```text
+methods/       FRInGe and one package per competitor
+evaluation/    Shared attribution metrics
+common/        Shared model and image utilities
+configs/       Exact method and ablation configurations
+assets/        Selected paper figures for documentation
+examples/      Small example images
+data/          Local dataset mount point; ImageNet is not distributed
+```
 
 ## Installation
 
-Python 3.10 or newer is recommended. A CUDA-capable GPU is strongly recommended because FRInGe performs
-repeated Jacobian-vector products and iterative linear solves.
+Python 3.10 or newer is recommended. A CUDA-capable GPU is strongly recommended
+for full experiments because FRInGe performs repeated Jacobian-vector products
+and iterative linear solves.
 
 ```bash
 git clone https://github.com/GabMartino/FRInGe.git
 cd FRInGe
-
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Torchvision downloads pretrained ImageNet weights the first time a model is loaded.
+Torchvision downloads pretrained ImageNet weights on first use. MIG separately
+downloads `stabilityai/sd-vae-ft-mse` through Diffusers. GeoIG uses vendored
+source but still requires the dependencies declared in `requirements.txt`.
 
-Verify the categorical and binary implementations with:
+Check that an entry point and its Hydra configuration resolve without starting
+an experiment with:
 
 ```bash
-python -m unittest discover -s tests -v
+python -m methods.FisherRaoIG.FisherRaoIG_benchmarking --cfg job --resolve
 ```
 
 ## Quick start
 
-The following example explains the top-1 prediction of a pretrained ResNet-18 using the categorical
-implementation and its benchmarked ResNet-18 hyperparameters.
+This example explains a pretrained ResNet-18 top-1 prediction with categorical
+FRInGe and the paper's ResNet-18 parameters:
 
 ```python
 import torch
 
-from FisherRaoIG.FisherRaoIntegratedGradients import FisherRaoIntegratedGradients
-from utils import load_image, load_model
+from common.utils import load_image, load_model
+from methods.FisherRaoIG.FisherRaoIntegratedGradients import (
+    FisherRaoIntegratedGradients,
+)
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -139,80 +178,72 @@ attributions, completeness_delta = explainer.attribute(
 )
 
 print(attributions.shape)
-print("Mean completeness residual:", completeness_delta)
+print("Mean absolute completeness residual:", completeness_delta)
 ```
 
-The complete categorical and binary parameter sets for all six architectures are recorded in
-[`config/ablation/3_fisher_smooth.yaml`](config/ablation/3_fisher_smooth.yaml) and
-[`config/ablation/fringe2_binary.yaml`](config/ablation/fringe2_binary.yaml), respectively. These are
-experiment-specific settings rather than universal defaults.
+The categorical and binary parameter sets for all six architectures are in
+[`configs/ablation/3_fisher_smooth.yaml`](configs/ablation/3_fisher_smooth.yaml)
+and
+[`configs/ablation/fringe2_binary.yaml`](configs/ablation/fringe2_binary.yaml).
+These are experiment-specific settings, not universal defaults.
 
-## Outputs and diagnostics
+## Running experiments
 
-The benchmark-facing categorical call returns the attribution tensor and its mean absolute completeness
-residual. The FRInGe-B backend additionally records per-example diagnostics including:
+Place evaluation images under `data/ImageNet/` or override the corresponding
+Hydra path. Run all commands from the repository root. For example:
 
-- target probability, target log-odds, and requested waypoints;
-- Fisher–Rao and Euclidean step norms;
-- active trust-region constraints;
-- regularizer-inverse iteration counts;
-- completeness and endpoint errors, including the full categorical KL to uniform.
-
-When FRInGe-B is selected through the canonical wrapper, the full dictionary is available as
-`explainer.last_binary_stats` after attribution.
-
-## Evaluation metrics
-
-The `metrics/` package includes:
-
-- blur-based insertion and deletion AUC;
-- Magnitude Aligned Scoring (MAS) for insertion and deletion;
-- infidelity;
-- max sensitivity;
-- Gini sparseness.
-
-Metrics and perturbation choices answer different questions. In particular, MAS evaluates whether
-attribution magnitude tracks the model's confidence response, whereas insertion/deletion AUC primarily
-evaluates the induced feature ranking.
-
-## Repository layout
-
-```text
-FisherRaoIG/
-  FisherRaoIntegratedGradients.py            # canonical benchmark-facing API
-  BinaryFisherRaoIntegratedGradients.py      # FRInGe-B backend
-  FR_utils.py                                # waypoints, Fisher products, and PCG
-  BiharmonicFisherRaoIntegratedGradients.py  # legacy diagnostic prototype
-config/ablation/                             # reported architecture settings
-metrics/                                     # attribution evaluation metrics
-examples/                                    # example ImageNet images
-tests/                                       # geometry and integration tests
-utils.py                                     # model and image utilities
+```bash
+python -m methods.FisherRaoIG.FisherRaoIG_benchmarking
+python -m methods.FisherRaoIG.FisherRaoIG_benchmarking \
+  ablation=fringe2_binary
+python -m methods.IG.IG_benchmarking
+python -m methods.ExpectedGradients.ExpectedGradients_benchmarking
 ```
 
-The repository also contains benchmarking implementations of IG, GuidedIG, SmoothGrad, IG², and
-Adversarial IG used during development.
+The remaining competitors follow the same convention:
 
-## Reproducibility notes
+```bash
+python -m methods.SmoothGrad.SmoothGrad_benchmarking
+python -m methods.GuidedIG.GuidedIG_benchmarking
+python -m methods.IG2.IG2_benchmarking
+python -m methods.AdversarialIG.AdversarialIG_benchmarking
+python -m methods.GGIG.GGIG_benchmarking
+python -m methods.GIG.GIG_benchmarking
+python -m methods.BlurIG.BlurIG_benchmarking
+python -m methods.MIG.MIG_benchmarking
+```
 
-- The released categorical class is the class imported by `FisherRaoIG_benchmarking.py` in the research
-  workspace; FRInGe-B is its required binary backend.
-- The benchmark artifacts record PyTorch 2.8.0, torchvision 0.23.0, and CUDA 12.8.
-- Hyperparameters should be reported together with the model, preprocessing pipeline, target definition,
-  and perturbation protocol.
-- The unit tests verify waypoint indexing, binary endpoint normalization, the closed-form rank-one solve,
-  finite attributions, and completeness on a deterministic toy classifier.
-- The complete paper-specific distributed benchmark orchestration is not yet part of this repository.
+Each runner reads its corresponding YAML file in `configs/`, uses the same
+model/image utilities and evaluation package, and creates its configured output
+directory under `results/methods/`. Generated results are ignored by Git and are
+not part of this source release.
+
+## Reproducibility boundaries
+
+- The released source files are the benchmark imports used in the paper
+  workspace after its package reorganization.
+- The reported benchmark environment used PyTorch 2.8.0, torchvision 0.23.0,
+  and CUDA 12.8.
+- Preprocessing, target definition, reference distributions, stochastic sample
+  counts, and metric perturbations are explicit in `configs/` and must be
+  reported with results.
+- Expected Gradients requires a genuinely disjoint reference pool for a final
+  scientific run. Its local fallback reuses the evaluation directory and emits
+  a warning; it is a smoke-test convenience, not a valid publication protocol.
+- Runtime comparisons are hardware- and batching-dependent. Running the default
+  configurations does not by itself constitute a controlled speed comparison.
+- The exact Diffusers version used for the original MIG run was not captured in
+  the archived environment metadata, so that dependency is intentionally not
+  presented as fully pinned.
 
 ## Paper and citation
 
-The accompanying manuscript is titled **"FRInGe: Distribution-Space Integrated Gradients with
-Fisher–Rao Geometry."** A public paper link and BibTeX entry will be added when the preprint is released.
-
-If you use the code before then, please link to this repository and record the exact Git commit for
-reproducibility.
+The accompanying manuscript is titled **“FRInGe: Distribution-Space Integrated
+Gradients with Fisher–Rao Geometry.”** A public paper link and BibTeX entry will
+be added when the preprint is released. Until then, please cite the repository
+URL and record the exact Git commit.
 
 ## Questions and issues
 
-Please use the [GitHub issue tracker](https://github.com/GabMartino/FRInGe/issues) for reproducible bug
-reports and questions about the implementation.
+Please use the [GitHub issue tracker](https://github.com/GabMartino/FRInGe/issues)
+for reproducible bug reports and questions.

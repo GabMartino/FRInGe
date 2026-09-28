@@ -1,0 +1,52 @@
+# smoothgrad_config.yaml
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18", "resnet50", "resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/SmoothGrad"
+
+# -----------------------------
+# RUN PARAMS (used by the script)
+# -----------------------------
+batch_size: 8          # NOTE: effective forward batch for SmoothGrad is batch_size * n_samples
+seed: 42               # used for reproducible noise in SmoothGrad + infidelity (if you pass it)
+
+# -----------------------------
+# SMOOTHGRAD HYPERPARAMS
+# -----------------------------
+n_samples: 25
+std: 0.15
+magnitude: false       # if true: sqrt(mean(grad^2)) instead of mean(grad)
+
+# -----------------------------
+# INSERTION / DELETION (CausalMetricScorer)
+# -----------------------------
+causal_steps: 100
+causal_baseline: "blur"     # "blur" | "black" | "white" | "zero"
+causal_chunk_size: 8
+
+# -----------------------------
+# MAS
+# -----------------------------
+mas_step_size: 224           # pixels per step (for 224x224, 224 means ~224 pixels step)
+mas_baseline: "blur"         # "blur" | "black" | "white"
+mas_klen: 15
+mas_nsig: 3
+mas_batch_size: 50           # inference_batch_size inside MAS scorer
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_seed: 42          # if you want separate from main seed
+infidelity_chunk_size: 10
+
+causal_baselines: ["blur", "black", "white"]
+mas_baselines: ["blur", "black"]

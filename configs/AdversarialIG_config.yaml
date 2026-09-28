@@ -1,0 +1,56 @@
+# agi_config.yaml
+# Benchmark config for Adversarial Gradient Integration (AGI)
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18", "resnet50", "resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/AdversarialIG"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+batch_size: 8
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# AGI HYPERPARAMS
+# -----------------------------
+epsilon: 0.05           # Step size for PGD
+max_iter: 20            # Max steps for PGD path
+topk: 5                 # Number of adversarial targets to average over
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

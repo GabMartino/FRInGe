@@ -1,0 +1,60 @@
+# GGIG_config.yaml
+# Benchmark config for Geometrically Guided Integrated Gradients
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18", "resnet50", "resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/GGIG/"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+# GGIG computes gradients across `m` steps for every `n` interpolation points[cite: 85].
+# This requires significantly more VRAM than vanilla IG. Batch size reduced to prevent OOM.
+batch_size: 16
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# GGIG SPECIFIC PARAMS
+# -----------------------------
+# These replace the ig_method and internal_batch_size parameters.
+n_steps: 50          # Number of interpolation points between baseline and input[cite: 84].
+ggig_m_steps: 20     # Number of gradient ascent iterations per point. The authors used 200 for MNIST[cite: 183], but 20 is a safer starting point for ImageNet.
+ggig_lr: 0.0001      # Learning rate for gradient ascent. The paper used 0.0001 for MNIST[cite: 183].
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# EPSILON-PERTURBATION SANITY CHECK
+# -----------------------------
+# Replaces Infidelity. Tests if the method degrades appropriately when model weights are perturbed[cite: 153, 155].
+run_epsilon_sanity_check: true
+# Perturbation scales based on Figure 4 in the paper[cite: 162, 163, 164, 165].
+eps_perturbation_levels: [0.01, 0.11, 0.21, 0.31, 0.41, 0.51, 0.61, 0.71, 0.81]
