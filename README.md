@@ -101,6 +101,7 @@ common/        Shared model and image utilities
 configs/       Exact method and ablation configurations
 assets/        Selected paper figures for documentation
 examples/      Small example images
+notebooks/     Interactive FRInGe and FRInGe-B sanity check
 data/          Local dataset mount point; ImageNet is not distributed
 ```
 
@@ -131,6 +132,17 @@ python -m methods.FisherRaoIG.FisherRaoIG_benchmarking --cfg job --resolve
 ```
 
 ## Quick start
+
+For a visual end-to-end check of both FRInGe variants, open
+[`notebooks/FRInGe_quickstart.ipynb`](notebooks/FRInGe_quickstart.ipynb). It
+loads the released configurations, runs both methods on an included image, and
+reports completeness and FRInGe-B endpoint diagnostics. Jupyter is an optional
+interface dependency:
+
+```bash
+python -m pip install jupyterlab
+jupyter lab notebooks/FRInGe_quickstart.ipynb
+```
 
 This example explains a pretrained ResNet-18 top-1 prediction with categorical
 FRInGe and the paper's ResNet-18 parameters:
