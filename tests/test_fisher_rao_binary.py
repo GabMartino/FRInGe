@@ -4,13 +4,13 @@ from unittest.mock import patch
 
 import torch
 
-from FisherRaoIG.BinaryFisherRaoIntegratedGradients import (
+from methods.FisherRaoIG.BinaryFisherRaoIntegratedGradients import (
     FisherRaoIntegratedGradients2Class,
 )
-from FisherRaoIG.FisherRaoIntegratedGradients import (
+from methods.FisherRaoIG.FisherRaoIntegratedGradients import (
     FisherRaoIntegratedGradients,
 )
-from FisherRaoIG.FR_utils import compute_waypoints, spherical_loss
+from methods.FisherRaoIG.FR_utils import compute_waypoints, spherical_loss
 
 
 class TinyLinearClassifier(torch.nn.Module):
@@ -212,7 +212,7 @@ class BinaryFisherRaoTests(unittest.TestCase):
             return spherical_loss(current_sqrt, target_sqrt)
 
         fringe_module = importlib.import_module(
-            "FisherRaoIG.FisherRaoIntegratedGradients"
+            "methods.FisherRaoIG.FisherRaoIntegratedGradients"
         )
         with patch.object(
             fringe_module,

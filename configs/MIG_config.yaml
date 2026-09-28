@@ -1,0 +1,62 @@
+# MIG_config.yaml
+# Benchmark config for Manifold Integrated Gradients (pretrained-AE manifold).
+# Mirrors GIG_config.yaml so results are directly comparable.
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/MIG/"
+method_name: "MIG"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+# MIG optimizes a per-image geodesic, so attribution is done one image at a time
+# internally regardless of batch_size (batch_size only groups the metric passes).
+batch_size: 8
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# MANIFOLD IG SPECIFIC
+# -----------------------------
+mig_ae_model_id: "stabilityai/sd-vae-ft-mse"  # diffusers AutoencoderKL (KL-f8)
+mig_num_interpolants: 12        # points along the path (incl. both endpoints)
+mig_geo_alpha: 0.0001           # geodesic gradient-descent step (may need tuning)
+mig_geo_epsilon: 1000.0         # curve-energy convergence threshold
+mig_geo_max_iterations: 3       # path-refinement iters; 0 = decoded straight-latent path
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

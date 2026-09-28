@@ -1,0 +1,163 @@
+# Publication-scale equal-budget comparison. For a smoke test, append:
+#   split.evaluation_size=1 split.baseline_pool_size=16 systems.warmup_runs=1
+#   quality.causal_steps=4 quality.infidelity_perturbations=2
+#   only_methods=[ig,expected_gradients]
+
+defaults:
+  - _self_
+
+seed: 42
+device: auto
+dataset_dir: ./data/ImageNet
+results_root: ./results/comparisons/EqualBudget
+avail_models: [resnet18, resnet50, inception_v3]
+only_methods: []
+overwrite: false
+save_attributions: false
+
+split:
+  # All three subsets are sampled once and are mutually disjoint.
+  baseline_pool_size: 128
+  warmup_size: 10
+  evaluation_size: 64
+
+systems:
+  # Warm-up is method/model/candidate-specific and excluded from timing.
+  warmup_runs: 10
+  timing_batch_size: 1
+  throughput_batch_size: 4
+  throughput_runs: 3
+
+quality:
+  enabled: true
+  # Keep the publication comparison aligned with the HPO objective.
+  causal_baselines: [blur]
+  causal_steps: 100
+  causal_chunk_size: 1
+  mas_baselines: [blur]
+  mas_step_size: 224
+  mas_klen: 15
+  mas_nsig: 3.0
+  mas_batch_size: 32
+  infidelity_perturbations: 50
+  infidelity_noise_scale: 0.02
+  infidelity_chunk_size: 10
+
+methods:
+  ig:
+    enabled: true
+    defaults:
+      integration_method: gausslegendre
+      internal_batch_size: null
+    candidates:
+      - {id: ig_8, n_steps: 8}
+      - {id: ig_16, n_steps: 16}
+      - {id: ig_32, n_steps: 32}
+      - {id: ig_64, n_steps: 64}
+      - {id: ig_128, n_steps: 128}
+      - {id: ig_256, n_steps: 256, is_full: true}
+
+  expected_gradients:
+    enabled: true
+    defaults:
+      integration_method: gausslegendre
+      internal_batch_size: null
+      baseline_batch_size: 1
+      sample_with_replacement: false
+    candidates:
+      - {id: eg_1x32, num_baselines: 1, steps_per_baseline: 32}
+      - {id: eg_2x16, num_baselines: 2, steps_per_baseline: 16}
+      - {id: eg_4x16, num_baselines: 4, steps_per_baseline: 16}
+      - {id: eg_8x8, num_baselines: 8, steps_per_baseline: 8}
+      - {id: eg_16x8, num_baselines: 16, steps_per_baseline: 8, is_full: true}
+
+  smoothgrad:
+    enabled: true
+    defaults:
+      stdev_spread: 0.15
+      magnitude: false
+      # Chunking constrains memory without changing the Monte Carlo estimator.
+      sample_batch_size: 8
+    candidates:
+      - {id: smoothgrad_8, n_samples: 8}
+      - {id: smoothgrad_16, n_samples: 16}
+      - {id: smoothgrad_32, n_samples: 32}
+      - {id: smoothgrad_64, n_samples: 64, is_full: true}
+
+  # This is intentionally named precisely: it smooths the final IG map.
+  # It is the first matched-smoothing control, not a per-step regularized path.
+  ig_smoothed_map:
+    enabled: true
+    defaults:
+      integration_method: gausslegendre
+      internal_batch_size: null
+      kernel_size: [5, 5]
+      sigma: [2.0, 2.0]
+    candidates:
+      - {id: igsm_8, n_steps: 8}
+      - {id: igsm_16, n_steps: 16}
+      - {id: igsm_32, n_steps: 32}
+      - {id: igsm_64, n_steps: 64}
+      - {id: igsm_128, n_steps: 128}
+      - {id: igsm_256, n_steps: 256, is_full: true}
+
+  fringe:
+    enabled: true
+    defaults:
+      fisher: true
+      smoothing: true
+      use_sobolev_preconditioner: true
+      cg_rtol: 0.001
+      cg_atol: 0.00001
+    candidates:
+      - {id: fringe_fast_1, kl_target: 0.05, cg_max_iters: 2}
+      - {id: fringe_fast_2, kl_target: 0.02, cg_max_iters: 5}
+      - {id: fringe_fast_3, kl_target: 0.005, cg_max_iters: 10}
+      - {id: fringe_default, cg_max_iters: 20, is_full: true}
+      - {id: fringe_high_fidelity, kl_target: 0.0001, cg_max_iters: 40}
+
+  # Same smoothing, damping, gamma values, and candidate budgets as FRInGe
+  # above. The only method change is target-vs-rest Fisher geometry.
+  fringe_binary:
+    enabled: true
+    defaults:
+      smoothing: true
+      use_sobolev_preconditioner: true
+      cg_rtol: 0.001
+      cg_atol: 0.00001
+      blur_kernel_size: 5
+      blur_sigma: 2.0
+      safety_buffer: 0.1
+      show_progress: false
+    candidates:
+      - {id: fringe_binary_fast_1, kl_target: 0.05, cg_max_iters: 2}
+      - {id: fringe_binary_fast_2, kl_target: 0.02, cg_max_iters: 5}
+      - {id: fringe_binary_fast_3, kl_target: 0.005, cg_max_iters: 10}
+      - {id: fringe_binary_default, cg_max_iters: 20, is_full: true}
+      - {id: fringe_binary_high_fidelity, kl_target: 0.0001, cg_max_iters: 40}
+
+# Tuned parameters from configs/ablation/3_fisher_smooth.yaml, shared by the
+# multiclass and binary grids so geometry is the only FRInGe method difference.
+# Candidate values override kl_target and cg_max_iters where present.
+fringe_model_params:
+  resnet18:
+    eta_max: 13.56315
+    delta_euc: 0.61337
+    kl_target: 0.00030339
+    lambda_ratio: 4.7707e-11
+    gamma_step: 0.0099739
+    gamma_prior: 0.00097495
+  resnet50:
+    eta_max: 1.179
+    delta_euc: 5.00773
+    kl_target: 0.0027031
+    lambda_ratio: 0.00025802
+    gamma_step: 0.009943
+    gamma_prior: 0.00094855
+  inception_v3:
+    eta_max: 16.91726
+    delta_euc: 24.18139
+    kl_target: 0.00053427
+    lambda_ratio: 0.0000071733
+    gamma_step: 0.009727
+    gamma_prior: 0.00034298

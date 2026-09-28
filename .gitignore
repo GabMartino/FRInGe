@@ -5,6 +5,10 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
+*api_key*.yaml
+!*.example.yaml
 
 .ipynb_checkpoints/
 .pytest_cache/
@@ -14,5 +18,22 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# Local datasets and model caches
+data/*
+!data/README.md
+.cache/
+.hf_cache/
+
+# Raw/generated experiment output; compact released summaries remain tracked
+results/*
+!results/README.md
+!results/summaries/
+!results/summaries/**
+outputs/
+artifacts/
+wandb/
+*.out
+*.err
 
 .DS_Store

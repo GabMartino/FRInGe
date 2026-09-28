@@ -1,0 +1,58 @@
+# ig2_config.yaml
+# Benchmark config for IG2 (Structurally Identical to SmoothGrad/IG)
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18", "resnet50", "resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"   # Renamed from 'data_path' to match script
+results_root: "./results/methods/IG2"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+batch_size: 4
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# IG2 HYPERPARAMS
+# -----------------------------
+n_steps: 50             # Standard is 50. 500 is extremely slow (2500 passes/img).
+step_size: 0.1          # Step size for the iterative path finding
+n_references: 5         # Number of counterfactual references to average over
+layer_name: null        # null = auto-detect penultimate layer
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+# MUST be a list to match the aggregation logic
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100       # Renamed from 'causal_metric_scorer_steps'
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+mas_baselines: ["blur"] # MUST be a list
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32      # Renamed from 'mas_infer_bs'
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

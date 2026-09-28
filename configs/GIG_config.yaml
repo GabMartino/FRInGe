@@ -1,0 +1,61 @@
+# GIG_config.yaml
+# Benchmark config for Geodesic Integrated Gradients (SVI Method)
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/GIG/"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+# CRITICAL FIX: SVI optimizes a path using autograd. Batching > 1 will likely OOM.
+batch_size: 8
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# GEODESIC IG SVI SPECIFIC
+# -----------------------------
+# These replace 'n_steps' and 'ig_method' from vanilla IG.
+gig_num_iterations: 10        # How many gradient steps to take to optimize the path
+gig_n_steps: 10               # Discretization of the path (anchor points)
+gig_beta: 1.0                 # Regularization parameter for the SVI objective
+gig_do_linear_interp: true    # Initialize the path as a straight line before bending
+gig_endpoints_matching: true  # Anchor the start to the baseline and end to the image
+gig_lr: 0.01                  # Learning rate for the path optimization
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

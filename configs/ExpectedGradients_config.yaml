@@ -1,0 +1,85 @@
+# Benchmark config for Expected Gradients.
+#
+# Expected Gradients averages Integrated Gradients across references sampled
+# uniformly from an empirical baseline pool.
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18", "resnet50", "resnet101", "resnet152", "inception_v3", "vgg19"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/ExpectedGradients"
+max_images: null
+
+# For a publication/rebuttal run, point this at a disjoint ImageNet training
+# subset or another versioned reference set and set require_disjoint_baselines.
+# The local default reuses the example directory so the script is runnable with
+# the current repository data, but it emits an overlap warning.
+baselines_dir: "./data/ImageNet"
+baseline_source: "image_directory"
+require_disjoint_baselines: false
+baseline_pool_size: 128
+baseline_pool_seed: 42
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+batch_size: 8
+seed: 42
+
+# Use one fixed sampled reference set for every evaluation batch. Set true to
+# deterministically resample it with seed + batch start index.
+resample_baselines_per_batch: false
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# EXPECTED GRADIENTS
+# -----------------------------
+num_baselines: 8
+steps_per_baseline: 16
+ig_method: "gausslegendre"
+target_score: "target_logit"
+
+# Number of references paired with each input in one outer chunk. Captum's
+# own internal_batch_size still caps the actual forward/backward batch size,
+# so raising this toward num_baselines mainly cuts Python-level loop/setup
+# overhead (fewer separate ig.attribute() calls), not total GPU FLOPs.
+baseline_batch_size: 8
+
+# Captum's integration-point chunk size. It must be large enough for at least
+# one expanded input/reference group; increase it when memory permits.
+internal_batch_size: 128
+sample_with_replacement: false
+
+# -----------------------------
+# INSERTION / DELETION
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 8
+causal_normalize: true
+
+# -----------------------------
+# MAS
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10

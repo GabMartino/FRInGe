@@ -1,0 +1,49 @@
+# configs/FisherRaoIG_config.yaml
+
+# --- HYDRA COMPOSITION ---
+defaults:
+  - _self_
+  - ablation: 3_fisher_smooth  # Loads configs/ablation/3_fisher_smooth.yaml into cfg.ablation
+
+# --- MODELS TO RUN ---
+avail_models: ["resnet18", "resnet50", "resnet152", "inception_v3", "vgg19", "resnet101"]
+
+# --- INFRASTRUCTURE ---
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/FisherRaoIG"
+batch_size: 16
+seed: 43
+
+# --- SAVING ---
+save_attributions: true
+attr_save_dtype: "float16"
+
+# --- METRICS (Global) ---
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+mas_baselines: ["blur", "black", "white"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10
+
+
+sensitivity:
+  name: fr_ig_sensitivity
+  mode: one_at_a_time
+  include_baseline: true
+  max_images: 64
+  gamma_base_source: geometric_mean
+  sweeps:
+    kl_target: [0.0001, 0.0002, 0.0004, 0.0008, 0.0016]
+    eta_max: [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0 ]
+    delta_euc: [0.1, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+    lambda_ratio: [1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5]
+    gamma: [1e-1, 1e-2, 1e-3, 1e-4, 1e-5]

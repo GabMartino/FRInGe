@@ -1,0 +1,56 @@
+# guided_ig_config.yaml
+# Benchmark config for Guided Integrated Gradients
+
+# -----------------------------
+# MODELS
+# -----------------------------
+avail_models: ["resnet18"]
+
+# -----------------------------
+# DATA / I-O
+# -----------------------------
+examples_dir: "./data/ImageNet"
+results_root: "./results/methods/GuidedIG"
+
+# -----------------------------
+# RUN PARAMS
+# -----------------------------
+batch_size: 16
+seed: 42
+
+# -----------------------------
+# ATTRIBUTION SAVING
+# -----------------------------
+save_attributions: true
+attr_save_dtype: "float16"
+
+# -----------------------------
+# GUIDED IG HYPERPARAMS
+# -----------------------------
+n_steps: 100            # Default for Guided IG in literature
+fraction: 0.25          # Fraction of features to update greedily
+max_dist: 0.02          # Max L1 distance per step
+
+# -----------------------------
+# INSERTION / DELETION (Causal)
+# -----------------------------
+causal_baselines: ["blur", "black", "white"]
+causal_steps: 100
+causal_chunk_size: 4
+causal_normalize: true
+
+# -----------------------------
+# MAS (Meta-Agnostic Slope)
+# -----------------------------
+mas_baselines: ["blur"]
+mas_step_size: 224
+mas_klen: 15
+mas_nsig: 3.0
+mas_batch_size: 32
+
+# -----------------------------
+# INFIDELITY
+# -----------------------------
+infide_n_perturbations: 50
+noise_scale: 0.02
+infidelity_chunk_size: 10
